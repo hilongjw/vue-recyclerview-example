@@ -42,6 +42,6 @@ export default function fetch (count, items) {
         items[i] = getItem()
       }
       resolve(Promise.all(items))
-    }, 1000)
+    }, 500)
   })
 }

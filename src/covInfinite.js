@@ -318,19 +318,23 @@ InfiniteScroller.prototype = {
       // this.scroller_.appendChild(node)
       this.items_[i].node = node
       newNodes.push(node)
-
-      // cacheItemsHeight
-      if (this.items_[i].data && !this.items_[i].height) {
-        this.items_[i].height = this.items_[i].node.offsetHeight
-        this.items_[i].width = this.items_[i].node.offsetWidth
-      }
-
     }
+
     let len = len = newNodes.length
     for (i = 0; i < len; i++) {
       this.scroller_.appendChild(newNodes[i])
     }
     return tombstoneAnimations
+  },
+
+  cacheItemHeight () {
+    for (let i = this.firstAttachedItem_; i < this.lastAttachedItem_; i++) {
+      // cacheItemsHeight
+      if (this.items_[i].data && !this.items_[i].height) {
+        this.items_[i].height = this.items_[i].node.offsetHeight
+        this.items_[i].width = this.items_[i].node.offsetWidth
+      }
+    }
   },
 
   /**
@@ -343,6 +347,8 @@ InfiniteScroller.prototype = {
     let tombstoneAnimations = this.renderItems()
 
     this.clearUnUsedNodes()
+
+    this.cacheItemHeight()
 
     this.getNodePosition()
 

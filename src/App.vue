@@ -93,7 +93,7 @@ html, body {
       :fetch="wechatFetch" 
       :item="ChatItem" 
       :tombstone="Tombstone"
-      :prerender="20"
+      :prerender="30"
       ></CycleList>
 
     <CommonList v-if="listType === 'common'" class="recyclerview common" ></CommonList>
