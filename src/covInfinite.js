@@ -255,18 +255,22 @@ InfiniteScroller.prototype = {
     }
   },
 
-  setAnimatePosition (tombstoneAnimations) {
-    // Set up initial positions for animations.
+  tombstoneLayout (tombstoneAnimations) {
     let i
     let anim
     for (i in tombstoneAnimations) {
-      anim = tombstoneAnimations[i];
+      anim = tombstoneAnimations[i]
       this.items_[i].node.style.transform = 'translateY(' + (this.anchorScrollTop + anim[1]) + 'px) scale(' + (this.tombstoneWidth_ / this.items_[i].width) + ', ' + (this.tombstoneSize_ / this.items_[i].height) + ')'
       // Call offsetTop on the nodes to be animated to force them to apply current transforms.
       this.items_[i].node.offsetTop
       anim[0].offsetTop
       this.items_[i].node.style.transition = 'transform ' + this.ANIMATION_DURATION_MS + 'ms'
     }
+  },
+
+  itemLayout (tombstoneAnimations) {
+    let i
+    let anim
 
     for (i = this.firstAttachedItem_; i < this.lastAttachedItem_; i++) {
       anim = tombstoneAnimations[i]
@@ -282,6 +286,11 @@ InfiniteScroller.prototype = {
       this.items_[i].top = this.curPos
       this.curPos += this.items_[i].height || this.tombstoneSize_
     }
+  },
+
+  setAnimatePosition (tombstoneAnimations) {
+    this.tombstoneLayout(tombstoneAnimations)
+    this.itemLayout(tombstoneAnimations)
   },
 
   renderItems () {
