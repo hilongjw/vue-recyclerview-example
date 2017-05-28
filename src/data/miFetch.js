@@ -341,5 +341,11 @@ export default function fetch (count, items) {
       resolve(Promise.all(items))
     }, 200)
   })
+  .then(list => {
+    return {
+      list: list,
+      count: 1000
+    }
+  })
 }
 

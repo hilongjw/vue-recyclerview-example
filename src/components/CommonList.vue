@@ -7,7 +7,7 @@
 <script>
 import ChatItem from './ChatItem.vue'
 import Tombstone from './Tombstone.vue'
-import fetch from '../fetch'
+import fetch from '../data/wechat-fetch'
 
 export default {
   data () {
@@ -26,7 +26,7 @@ export default {
     init () {
       fetch(1000)
         .then(data => {
-          this.messages = data
+          this.messages = data.list
         })
     }
   }

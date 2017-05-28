@@ -1,4 +1,4 @@
-import { MESSAGES, NUM_AVATARS, NUM_IMAGES } from './messages'
+import { MESSAGES, NUM_AVATARS, NUM_IMAGES } from './wechat-data'
 
 const INIT_TIME = new Date().getTime()
 let msgIndex = 0
@@ -43,5 +43,11 @@ export default function fetch (count, items) {
       }
       resolve(Promise.all(items))
     }, 500)
+  })
+  .then(list => {
+    return {
+      list: list,
+      count: 1000
+    }
   })
 }

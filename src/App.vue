@@ -88,7 +88,7 @@ html, body {
     </div>
 
     <CycleList 
-      v-if="listType === 'wechat'" 
+      v-if="listType === 'wechat recyclerview'" 
       key="wechat" class="recyclerview wechat" 
       :fetch="wechatFetch" 
       :item="ChatItem" 
@@ -96,17 +96,19 @@ html, body {
       :prerender="30"
       ></CycleList>
 
-    <CommonList v-if="listType === 'common'" class="recyclerview common" ></CommonList>
+    <CommonList v-if="listType === 'listview'" class="recyclerview common" ></CommonList>
 
     <CycleList 
-      v-if="listType === 'mi'" 
-      :prerender="50" 
+      v-if="listType === 'mi recyclerview'" 
+      :prerender="30"
       key="mi" 
       class="recyclerview mi-list" 
       :fetch="MiFetch" 
       :item="MiItem" 
       :tombstone="MiTomstone"
     ></CycleList>
+
+    <MiCommonList v-if="listType === 'mi listview'" class="recyclerview common" ></MiCommonList>
 
     <ActionModal :action-modal="actionModal" :toogle-modal="toogleModal"></ActionModal>
   </div>
@@ -119,9 +121,10 @@ import Tombstone from './components/Tombstone'
 import MiItem from './components/MiItem.vue'
 import MiTomstone from './components/MiTombstone.vue'
 import initStat from './stat-config'
-import wechatFetch from './fetch'
+import wechatFetch from './data/wechat-fetch'
 import MiFetch from './data/miFetch'
 import CommonList from './components/CommonList.vue'
+import MiCommonList from './components/MiCommonList.vue'
 import ActionModal from './components/ActionModal.vue'
 
 export default {
@@ -134,21 +137,25 @@ export default {
       actionModal: {
         show: false,
         actions: [{
-          text: 'wechat',
+          text: 'wechat recyclerview',
           icon: 'icon-wechat1',
           handler: this.actionHandler
         }, {
-          text: 'mi',
+          text: 'listview',
+          icon: 'icon-1',
+          handler: this.actionHandler
+        }, {
+          text: 'mi recyclerview',
           icon: 'icon-mi',
           handler: this.actionHandler
         }, {
-          text: 'common',
-          icon: 'icon-1',
+          text: 'mi listview',
+          icon: 'icon-mi',
           handler: this.actionHandler
         }]
       },
       actionModalShow: false,
-      listType: 'mi',
+      listType: 'mi recyclerview',
       messages: [],
       wechatFetch: wechatFetch,
       MiFetch: MiFetch,
@@ -164,6 +171,7 @@ export default {
   components: {
     CycleList,
     CommonList,
+    MiCommonList,
     ActionModal
   },
   methods: {

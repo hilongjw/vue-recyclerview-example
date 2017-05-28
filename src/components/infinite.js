@@ -17,16 +17,22 @@
  */
 
 // Number of items to instantiate beyond current view in the scroll direction.
-var RUNWAY_ITEMS = 50;
+var RUNWAY_ITEMS = 10
 
 // Number of items to instantiate beyond current view in the opposite direction.
-var RUNWAY_ITEMS_OPPOSITE = 10;
+var RUNWAY_ITEMS_OPPOSITE = 10
 
 // The number of pixels of additional length to allow scrolling to.
-var SCROLL_RUNWAY = 2000;
+var SCROLL_RUNWAY = 2000
 
 // The animation interval (in ms) for fading in content from tombstones.
-var ANIMATION_DURATION_MS = 200;
+var ANIMATION_DURATION_MS = 200
+
+var TOMBSTONE_CLASS = 'tombstone'
+
+var INVISIBLE_CLASS = 'invisible'
+
+const MAX_COUNT = Infinity
 
 /**
  * Construct an infinite scroller.
@@ -35,7 +41,15 @@ var ANIMATION_DURATION_MS = 200;
  * @param {InfiniteScrollerSource} source A provider of the content to be
  *     displayed in the infinite scroll region.
  */
-export default function InfiniteScroller(scroller, source) {
+export default function InfiniteScroller(scroller, source, options = {}) {
+  this.RUNWAY_ITEMS = options.RUNWAY_ITEMS || RUNWAY_ITEMS
+  this.RUNWAY_ITEMS_OPPOSITE = options.RUNWAY_ITEMS_OPPOSITE || RUNWAY_ITEMS_OPPOSITE
+  this.SCROLL_RUNWAY = options.SCROLL_RUNWAY || SCROLL_RUNWAY
+  this.ANIMATION_DURATION_MS = options.ANIMATION_DURATION_MS || ANIMATION_DURATION_MS
+  this.TOMBSTONE_CLASS = options.TOMBSTONE_CLASS || TOMBSTONE_CLASS
+  this.INVISIBLE_CLASS = options.INVISIBLE_CLASS || INVISIBLE_CLASS
+  this.MAX_COUNT = MAX_COUNT
+
   this.anchorItem = {
     index: 0,
     offset: 0
@@ -52,7 +66,8 @@ export default function InfiniteScroller(scroller, source) {
   this.loadedItems_ = 0
   this.requestInProgress_ = false
 
-  this.domQueue = []
+  this.curPos = 0
+  this.unusedNodes = []
   this.baseNode = document.createElement('div')
 
   this.scroller_.addEventListener('scroll', this.onScroll_.bind(this))
@@ -87,7 +102,7 @@ InfiniteScroller.prototype = {
     var tombstone = this.source_.createTombstone(this.baseNode.cloneNode(true))
     tombstone.style.position = 'absolute'
     this.scroller_.appendChild(tombstone)
-    tombstone.classList.remove('invisible')
+    tombstone.classList.remove(this.INVISIBLE_CLASS)
     this.tombstoneSize_ = tombstone.offsetHeight
     this.tombstoneWidth_ = tombstone.offsetWidth
     this.scroller_.removeChild(tombstone)
@@ -107,8 +122,8 @@ InfiniteScroller.prototype = {
    * content.
    */
   onScroll_ () {
-    var delta = this.scroller_.scrollTop - this.anchorScrollTop;
-    // Special case, if we get to very top, always scroll to top.
+    const delta = this.scroller_.scrollTop - this.anchorScrollTop
+
     if (this.scroller_.scrollTop == 0) {
       this.anchorItem = {
         index: 0,
@@ -117,12 +132,15 @@ InfiniteScroller.prototype = {
     } else {
       this.anchorItem = this.calculateAnchoredItem(this.anchorItem, delta)
     }
+
     this.anchorScrollTop = this.scroller_.scrollTop
-    var lastScreenItem = this.calculateAnchoredItem(this.anchorItem, this.scroller_.offsetHeight)
+
+    const lastScreenItem = this.calculateAnchoredItem(this.anchorItem, this.scroller_.offsetHeight)
+
     if (delta < 0) {
-      this.fill(this.anchorItem.index - RUNWAY_ITEMS, lastScreenItem.index + RUNWAY_ITEMS_OPPOSITE)
+      this.fill(this.anchorItem.index - this.RUNWAY_ITEMS, lastScreenItem.index + this.RUNWAY_ITEMS_OPPOSITE)
     } else {
-      this.fill(this.anchorItem.index - RUNWAY_ITEMS_OPPOSITE, lastScreenItem.index + RUNWAY_ITEMS)
+      this.fill(this.anchorItem.index - this.RUNWAY_ITEMS_OPPOSITE, lastScreenItem.index + this.RUNWAY_ITEMS)
     }
   },
 
@@ -158,7 +176,7 @@ InfiniteScroller.prototype = {
     delta -= tombstones * this.tombstoneSize_
     return {
       index: i,
-      offset: delta,
+      offset: delta
     }
   },
 
@@ -178,9 +196,9 @@ InfiniteScroller.prototype = {
    * @return {Element} A tombstone element ready to be used.
    */
   getTombstone () {
-    var tombstone = this.tombstones_.pop()
+    const tombstone = this.tombstones_.pop()
     if (tombstone) {
-      tombstone.classList.remove('invisible')
+      tombstone.classList.remove(this.INVISIBLE_CLASS)
       tombstone.style.opacity = 1
       tombstone.style.transform = ''
       tombstone.style.transition = ''
@@ -189,39 +207,102 @@ InfiniteScroller.prototype = {
     return this.source_.createTombstone(this.baseNode.cloneNode(true))
   },
 
-  /**
-   * Attaches content to the scroller and updates the scroll position if
-   * necessary.
-   */
-  attachContent () {
-    // Collect nodes which will no longer be rendered for reuse.
-    // TODO: Limit this based on the change in visible items rather than looping
-    // over all items.
-    var i
-    var unusedNodes = []
-
-    for (i = 0; i < this.items_.length; i++) {
-      // Skip the items which should be visible.
+  getUnUsedNodes () {
+    for (let i = 0; i < this.items_.length; i++) {
       if (i == this.firstAttachedItem_) {
-        i = this.lastAttachedItem_ - 1;
-        continue;
+        i = this.lastAttachedItem_ - 1
+        continue
       }
       if (this.items_[i].vm) {
         this.items_[i].vm.$destroy()
       }
       if (this.items_[i].node) {
-        if (this.items_[i].node.classList.contains('tombstone')) {
+        if (this.items_[i].node.classList.contains(this.TOMBSTONE_CLASS)) {
           this.tombstones_.push(this.items_[i].node)
-          this.tombstones_[this.tombstones_.length - 1].classList.add('invisible')
+          this.tombstones_[this.tombstones_.length - 1].classList.add(this.INVISIBLE_CLASS)
         } else {
-          unusedNodes.push(this.items_[i].node)
+          this.unusedNodes.push(this.items_[i].node)
         }
       }
       this.items_[i].vm = null
       this.items_[i].node = null
     }
+  },
 
-    var tombstoneAnimations = {};
+  clearUnUsedNodes () {
+    while (this.unusedNodes.length) {
+      this.scroller_.removeChild(this.unusedNodes.pop());
+    }
+  },
+
+  getNodePosition () {
+    // Fix scroll position in case we have realized the heights of elements
+    // that we didn't used to know.
+    // TODO: We should only need to do this when a height of an item becomes
+    // known above.
+    this.anchorScrollTop = 0
+    for (let i = 0; i < this.anchorItem.index; i++) {
+      this.anchorScrollTop += this.items_[i].height || this.tombstoneSize_
+    }
+    this.anchorScrollTop += this.anchorItem.offset
+
+    this.curPos = this.anchorScrollTop - this.anchorItem.offset
+    let i = this.anchorItem.index
+    while (i > this.firstAttachedItem_) {
+      this.curPos -= this.items_[i - 1].height || this.tombstoneSize_
+      i--
+    }
+    while (i < this.firstAttachedItem_) {
+      this.curPos += this.items_[i].height || this.tombstoneSize_
+      i++
+    }
+  },
+
+  tombstoneLayout (tombstoneAnimations) {
+    let i
+    let anim
+    for (i in tombstoneAnimations) {
+      anim = tombstoneAnimations[i]
+      this.items_[i].node.style.transform = 'translateY(' + (this.anchorScrollTop + anim[1]) + 'px) scale(' + (this.tombstoneWidth_ / this.items_[i].width) + ', ' + (this.tombstoneSize_ / this.items_[i].height) + ')'
+      // Call offsetTop on the nodes to be animated to force them to apply current transforms.
+      this.items_[i].node.offsetTop
+      anim[0].offsetTop
+      this.items_[i].node.style.transition = 'transform ' + this.ANIMATION_DURATION_MS + 'ms'
+    }
+  },
+
+  itemLayout (tombstoneAnimations) {
+    let i
+    let anim
+
+    for (i = this.firstAttachedItem_; i < this.lastAttachedItem_; i++) {
+      anim = tombstoneAnimations[i]
+      if (anim) {
+        anim[0].style.transition = 'transform ' + this.ANIMATION_DURATION_MS + 'ms, opacity ' + this.ANIMATION_DURATION_MS + 'ms'
+        anim[0].style.transform = 'translateY(' + this.curPos + 'px) scale(' + (this.items_[i].width / this.tombstoneWidth_) + ', ' + (this.items_[i].height / this.tombstoneSize_) + ')'
+        anim[0].style.opacity = 0
+      }
+      if (this.curPos !== this.items_[i].top) {
+        if (!anim) this.items_[i].node.style.transition = ''
+        this.items_[i].node.style.transform = 'translateY(' + this.curPos + 'px)'
+      }
+      this.items_[i].top = this.curPos
+      this.curPos += this.items_[i].height || this.tombstoneSize_
+    }
+  },
+
+  setAnimatePosition (tombstoneAnimations) {
+    this.tombstoneLayout(tombstoneAnimations)
+    this.itemLayout(tombstoneAnimations)
+  },
+
+  renderItems () {
+    let tombstoneAnimations = {}
+    let node
+    let newNodes = []
+    let i
+
+    if (this.lastAttachedItem_ > this.MAX_COUNT) this.lastAttachedItem_ = this.MAX_COUNT - 1
     // Create DOM nodes.
     for (i = this.firstAttachedItem_; i < this.lastAttachedItem_; i++) {
       while (this.items_.length <= i) {
@@ -229,106 +310,90 @@ InfiniteScroller.prototype = {
       }
       if (this.items_[i].node) {
         // if it's a tombstone but we have data, replace it.
-        if (this.items_[i].node.classList.contains('tombstone') &&
+        if (this.items_[i].node.classList.contains(this.TOMBSTONE_CLASS) &&
             this.items_[i].data) {
           // TODO: Probably best to move items on top of tombstones and fade them in instead.
-          if (ANIMATION_DURATION_MS) {
+          if (this.ANIMATION_DURATION_MS) {
             this.items_[i].node.style.zIndex = 1;
-            tombstoneAnimations[i] = [this.items_[i].node, this.items_[i].top - this.anchorScrollTop];
+            tombstoneAnimations[i] = [this.items_[i].node, this.items_[i].top - this.anchorScrollTop]
           } else {
-            this.items_[i].node.classList.add('invisible');
-            this.tombstones_.push(this.items_[i].node);
+            this.items_[i].node.classList.add(this.INVISIBLE_CLASS)
+            this.tombstones_.push(this.items_[i].node)
           }
-          this.items_[i].node = null;
+          this.items_[i].node = null
         } else {
-          continue;
+          continue
         }
       }
-      var node = this.items_[i].data ? this.source_.render(this.items_[i].data, (unusedNodes.pop() || this.baseNode.cloneNode(true)), this.items_[i]) : this.getTombstone()
+      node = this.items_[i].data ? this.source_.render(this.items_[i].data, (this.unusedNodes.pop() || this.baseNode.cloneNode(true)), this.items_[i]) : this.getTombstone()
       // Maybe don't do this if it's already attached?
-      node.style.position = 'absolute';
-      this.items_[i].top = -1;
-      this.scroller_.appendChild(node);
-      this.items_[i].node = node;
+      node.style.position = 'absolute'
+      this.items_[i].top = -1
+      // this.scroller_.appendChild(node)
+      this.items_[i].node = node
+      newNodes.push(node)
     }
 
-    // Remove all unused nodes
-    while (unusedNodes.length) {
-      this.scroller_.removeChild(unusedNodes.pop());
+    let len = len = newNodes.length
+    for (i = 0; i < len; i++) {
+      this.scroller_.appendChild(newNodes[i])
     }
+    return tombstoneAnimations
+  },
 
-    // Get the height of all nodes which haven't been measured yet.
-    for (i = this.firstAttachedItem_; i < this.lastAttachedItem_; i++) {
-      // Only cache the height if we have the real contents, not a placeholder.
+  cacheItemHeight () {
+    for (let i = this.firstAttachedItem_; i < this.lastAttachedItem_; i++) {
+      // cacheItemsHeight
       if (this.items_[i].data && !this.items_[i].height) {
-        this.items_[i].height = this.items_[i].node.offsetHeight;
-        this.items_[i].width = this.items_[i].node.offsetWidth;
+        this.items_[i].height = this.items_[i].node.offsetHeight
+        this.items_[i].width = this.items_[i].node.offsetWidth
       }
     }
+  },
 
-    // Fix scroll position in case we have realized the heights of elements
-    // that we didn't used to know.
-    // TODO: We should only need to do this when a height of an item becomes
-    // known above.
-    this.anchorScrollTop = 0;
-    for (i = 0; i < this.anchorItem.index; i++) {
-      this.anchorScrollTop += this.items_[i].height || this.tombstoneSize_;
-    }
-    this.anchorScrollTop += this.anchorItem.offset;
+  /**
+   * Attaches content to the scroller and updates the scroll position if
+   * necessary.
+   */
+  attachContent () {
+    this.getUnUsedNodes()
 
-    // Position all nodes.
-    var curPos = this.anchorScrollTop - this.anchorItem.offset;
-    i = this.anchorItem.index;
-    while (i > this.firstAttachedItem_) {
-      curPos -= this.items_[i - 1].height || this.tombstoneSize_;
-      i--;
-    }
-    while (i < this.firstAttachedItem_) {
-      curPos += this.items_[i].height || this.tombstoneSize_;
-      i++;
-    }
-    // Set up initial positions for animations.
-    for (var i in tombstoneAnimations) {
-      var anim = tombstoneAnimations[i];
-      this.items_[i].node.style.transform = 'translateY(' + (this.anchorScrollTop + anim[1]) + 'px) scale(' + (this.tombstoneWidth_ / this.items_[i].width) + ', ' + (this.tombstoneSize_ / this.items_[i].height) + ')';
-      // Call offsetTop on the nodes to be animated to force them to apply current transforms.
-      this.items_[i].node.offsetTop
-      anim[0].offsetTop;
-      this.items_[i].node.style.transition = 'transform ' + ANIMATION_DURATION_MS + 'ms';
-    }
-    for (i = this.firstAttachedItem_; i < this.lastAttachedItem_; i++) {
-      var anim = tombstoneAnimations[i];
-      if (anim) {
-        anim[0].style.transition = 'transform ' + ANIMATION_DURATION_MS + 'ms, opacity ' + ANIMATION_DURATION_MS + 'ms';
-        anim[0].style.transform = 'translateY(' + curPos + 'px) scale(' + (this.items_[i].width / this.tombstoneWidth_) + ', ' + (this.items_[i].height / this.tombstoneSize_) + ')';
-        anim[0].style.opacity = 0;
-      }
-      if (curPos != this.items_[i].top) {
-        if (!anim)
-          this.items_[i].node.style.transition = '';
-        this.items_[i].node.style.transform = 'translateY(' + curPos + 'px)';
-      }
-      this.items_[i].top = curPos;
-      curPos += this.items_[i].height || this.tombstoneSize_;
-    }
+    let tombstoneAnimations = this.renderItems()
 
-    this.scrollRunwayEnd_ = Math.max(this.scrollRunwayEnd_, curPos + SCROLL_RUNWAY)
-    this.scrollRunway_.style.transform = 'translate(0, ' + this.scrollRunwayEnd_ + 'px)'
-    this.scroller_.scrollTop = this.anchorScrollTop
+    this.clearUnUsedNodes()
 
-    if (ANIMATION_DURATION_MS) {
+    this.cacheItemHeight()
+
+    this.getNodePosition()
+
+    this.setAnimatePosition(tombstoneAnimations)
+
+    // this.setScrollRunway()
+
+    if (this.ANIMATION_DURATION_MS) {
       // TODO: Should probably use transition end, but there are a lot of animations we could be listening to.
       setTimeout(() => {
-        for (var i in tombstoneAnimations) {
-          var anim = tombstoneAnimations[i]
-          anim[0].classList.add('invisible')
-          this.tombstones_.push(anim[0])
-          // Tombstone can be recycled now.
-        }
-      }, ANIMATION_DURATION_MS)
+        this.tombstoneAnimation(tombstoneAnimations)
+      }, this.ANIMATION_DURATION_MS)
     }
 
     this.maybeRequestContent()
+  },
+
+  setScrollRunway () {
+    this.scrollRunwayEnd_ = Math.max(this.scrollRunwayEnd_, this.curPos + this.SCROLL_RUNWAY)
+    this.scrollRunway_.style.transform = 'translate(0, ' + this.scrollRunwayEnd_ + 'px)'
+    this.scroller_.scrollTop = this.anchorScrollTop
+  },
+
+  tombstoneAnimation (tombstoneAnimations) {
+    let anim
+    for (var i in tombstoneAnimations) {
+      anim = tombstoneAnimations[i]
+      anim[0].classList.add(this.INVISIBLE_CLASS)
+      this.tombstones_.push(anim[0])
+    }
+    tombstoneAnimations = null
   },
 
   /**
@@ -341,11 +406,10 @@ InfiniteScroller.prototype = {
     var itemsNeeded = this.lastAttachedItem_ - this.loadedItems_;
     if (itemsNeeded <= 0) return
     this.requestInProgress_ = true
-    this.source_.fetch(itemsNeeded).then(this.addContent.bind(this))
-  },
-
-  removeUnNeedTombstone () {
-
+    this.source_.fetch(itemsNeeded).then(data => {
+      this.MAX_COUNT = data.count
+      this.addContent(data.list)
+    })
   },
 
   /**
@@ -372,13 +436,38 @@ InfiniteScroller.prototype = {
     this.requestInProgress_ = false
     var startIndex = this.items_.length
 
+    let index
     for (var i = 0; i < items.length; i++) {
       if (this.items_.length <= this.loadedItems_) {
         this.addItem_()
       }
-      this.items_[this.loadedItems_++].data = items[i]
+      if (this.loadedItems_ <= this.MAX_COUNT) {
+        index = this.loadedItems_++
+        this.items_[index].data = items[i]
+      }
+      
     }
 
     this.attachContent()
+  },
+
+  destroy () {
+    this.scroller_.removeEventListener('scroll', this.onScroll_)
+    window.removeEventListener('resize', this.onResize_)
+
+    this.firstAttachedItem_ = 0
+    this.lastAttachedItem_ = 0
+    this.anchorScrollTop = 0
+    this.tombstoneSize_ = 0
+    this.tombstoneWidth_ = 0
+    this.tombstones_ = []
+    this.scroller_ = null
+    this.source_ = null
+    this.loadedItems_ = 0
+    this.requestInProgress_ = false
+
+    this.curPos = 0
+    this.unusedNodes = []
+    this.baseNode = null
   }
 }

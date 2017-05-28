@@ -15,15 +15,13 @@
 </style>
 
 <script>
-import InfiniteScroller from '../covInfinite'
+import InfiniteScroller from './infinite'
 import Vue from 'vue'
 
 function ContentSource (fetch, itemRender, Tombstone) {
   this.itemRender = itemRender
   this.Tombstone = Tombstone
   this.fetch = fetch
-  this.nextItem_ = 0
-  this.vmCache = {}
 }
 
 ContentSource.prototype = {
@@ -43,11 +41,11 @@ ContentSource.prototype = {
   },
   createTombstone (el) {
     const vm = new Vue({
-      el: el,
       render: (h) => {
         return h(this.Tombstone)
       }
     })
+    vm.$mount(el)
     return vm.$el
   },
   render (data, el, item) {
@@ -82,9 +80,7 @@ export default {
   },
   data () {
     return {
-      contentSource: new ContentSource(this.fetch, this.item, this.tombstone, {
-        RUNWAY_ITEMS: this.prerender
-      }),
+      contentSource: new ContentSource(this.fetch, this.item, this.tombstone),
       scroller: null
     }
   },
@@ -100,8 +96,7 @@ export default {
         this.$el,
         this.contentSource,
         {
-          RUNWAY_ITEMS: 10,
-          RUNWAY_ITEMS_OPPOSITE: 10
+          RUNWAY_ITEMS: this.prerender
         }
       )
     }
