@@ -76,6 +76,20 @@ html, body {
 .action-item-text {
   font-size: 12px;
 }
+.list-container {
+  position: relative;
+  height: 100vh;
+}
+.loading-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  padding: 10px;
+  font-size: 14px;
+  color: #9E9E9E;
+}
 </style>
 
 <template>
@@ -86,6 +100,11 @@ html, body {
         <img src="static/images/wechat-more.svg" class="nav-header-action-icon">
       </div>
     </div>
+  
+    <div class="list-container">
+      <div class="loading-tip">
+        loading...
+      </div>
 
     <RecyclerView 
       v-if="listType === 'wechat recyclerview'" 
@@ -97,7 +116,7 @@ html, body {
       ></RecyclerView>
 
     <CommonList v-if="listType === 'listview'" class="recyclerview common" ></CommonList>
-
+    
     <RecyclerView 
       v-if="listType === 'mi recyclerview'" 
       :prerender="30"
@@ -110,6 +129,8 @@ html, body {
 
     <MiCommonList v-if="listType === 'mi listview'" class="recyclerview common" ></MiCommonList>
 
+    </div>
+
     <ActionModal :action-modal="actionModal" :toogle-modal="toogleModal"></ActionModal>
   </div>
 </template>
@@ -117,7 +138,7 @@ html, body {
 <script>
 // import RecyclerView from 'vue-recyclerview/src/RecyclerView.vue'
 // import RecyclerView from './components/RecyclerView.vue'
-import RecyclerView from './recyclerview/index.js'
+// import RecyclerView from './recyclerview/index.js'
 // import RecyclerView from '../dist/static/js/recyclerview.js'
 import ChatItem from './components/ChatItem.vue'
 import Tombstone from './components/Tombstone'
@@ -129,7 +150,6 @@ import MiFetch from './data/miFetch'
 import CommonList from './components/CommonList.vue'
 import MiCommonList from './components/MiCommonList.vue'
 import ActionModal from './components/ActionModal.vue'
-import Vue from 'vue'
 
 export default {
   name: 'app',
@@ -173,7 +193,6 @@ export default {
     initStat()
   },
   components: {
-    RecyclerView: RecyclerView(Vue),
     CommonList,
     MiCommonList,
     ActionModal
