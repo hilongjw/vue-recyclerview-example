@@ -87,18 +87,18 @@ html, body {
       </div>
     </div>
 
-    <CycleList 
+    <RecyclerView 
       v-if="listType === 'wechat recyclerview'" 
       key="wechat" class="recyclerview wechat" 
       :fetch="wechatFetch" 
       :item="ChatItem" 
       :tombstone="Tombstone"
       :prerender="30"
-      ></CycleList>
+      ></RecyclerView>
 
     <CommonList v-if="listType === 'listview'" class="recyclerview common" ></CommonList>
 
-    <CycleList 
+    <RecyclerView 
       v-if="listType === 'mi recyclerview'" 
       :prerender="30"
       key="mi" 
@@ -106,7 +106,7 @@ html, body {
       :fetch="MiFetch" 
       :item="MiItem" 
       :tombstone="MiTomstone"
-    ></CycleList>
+    ></RecyclerView>
 
     <MiCommonList v-if="listType === 'mi listview'" class="recyclerview common" ></MiCommonList>
 
@@ -115,7 +115,10 @@ html, body {
 </template>
 
 <script>
-import CycleList from './components/CycleList'
+// import RecyclerView from 'vue-recyclerview/src/RecyclerView.vue'
+// import RecyclerView from './components/RecyclerView.vue'
+import RecyclerView from './recyclerview/index.js'
+// import RecyclerView from '../dist/static/js/recyclerview.js'
 import ChatItem from './components/ChatItem.vue'
 import Tombstone from './components/Tombstone'
 import MiItem from './components/MiItem.vue'
@@ -126,6 +129,7 @@ import MiFetch from './data/miFetch'
 import CommonList from './components/CommonList.vue'
 import MiCommonList from './components/MiCommonList.vue'
 import ActionModal from './components/ActionModal.vue'
+import Vue from 'vue'
 
 export default {
   name: 'app',
@@ -169,7 +173,7 @@ export default {
     initStat()
   },
   components: {
-    CycleList,
+    RecyclerView: RecyclerView(Vue),
     CommonList,
     MiCommonList,
     ActionModal

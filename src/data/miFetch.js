@@ -344,7 +344,7 @@ export default function fetch (count, items) {
   .then(list => {
     return {
       list: list,
-      count: 1000
+      count: 100 // 1000
     }
   })
 }

@@ -2,12 +2,13 @@
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
 import Vue from 'vue'
 import App from './App'
-
+// import RecyclerView from './recyclerview'
 import vueLazyload from 'vue-lazyload'
 
 Vue.config.productionTip = false
 
 Vue.use(vueLazyload)
+// Vue.use(RecyclerView)
 
 /* eslint-disable no-new */
 new Vue({

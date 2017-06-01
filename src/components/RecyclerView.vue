@@ -18,16 +18,17 @@
 import InfiniteScroller from './infinite'
 import Vue from 'vue'
 
-function ContentSource (fetch, itemRender, Tombstone) {
-  this.itemRender = itemRender
-  this.Tombstone = Tombstone
-  this.fetch = fetch
-}
+class ContentSource {
+  constructor (fetch, itemRender, Tombstone, Vue) {
+    this.itemRender = itemRender
+    this.Tombstone = Tombstone
+    this.fetch = fetch
+    this.Vue = Vue
+  }
 
-ContentSource.prototype = {
   getVm (data, el, item) {
     if (!this.vmCache[data.id]) {
-      this.vmCache[data.id] = new Vue({
+      this.vmCache[data.id] = new this.Vue({
         render: (h) => {
           return h(this.itemRender, {
             props: {
@@ -38,18 +39,21 @@ ContentSource.prototype = {
       })
     }
     return this.vmCache[data.id]
-  },
+  }
+
   createTombstone (el) {
-    const vm = new Vue({
+    const vm = new this.Vue({
       render: (h) => {
         return h(this.Tombstone)
       }
     })
     vm.$mount(el)
+    console.log('mount', el === vm.$el, vm.$el)
     return vm.$el
-  },
+  }
+
   render (data, el, item) {
-    const vm = new Vue({
+    const vm = new this.Vue({
       el: el,
       render: (h) => {
         return h(this.itemRender, {
@@ -80,7 +84,7 @@ export default {
   },
   data () {
     return {
-      contentSource: new ContentSource(this.fetch, this.item, this.tombstone),
+      contentSource: new ContentSource(this.fetch, this.item, this.tombstone, Vue),
       scroller: null
     }
   },
