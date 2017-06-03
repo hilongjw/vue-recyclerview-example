@@ -1,76 +1,46 @@
 import InfiniteScroller from './infinite'
+import ContentSource from './content-source'
+import {
+  getEventPosition,
+  requestAnimationFrame,
+  preventDefaultException,
+  assign
+ } from './util'
 
-const defaultPosition = {
-  x: 0,
-  y: 0
+const Loading = {
+  render (h) {
+    return h('div', {
+      attrs: {
+        class: 'recyclerview-loading'
+      }
+    }, 'Loading...')
+  }
 }
 
-const mouseEvent = /mouse/
-
-export function getEventPosition (e) {
-  if (!e) return defaultPosition
-  if (e.type === 'touchmove') {
-    let touch = e.touches[0]
-    return {
-      x: touch.clientX,
-      y: touch.clientY
-    }
-  } else if (mouseEvent.test(e.type)) {
-    return {
-      x: e.clientX,
-      y: e.clientY
-    }
+const Tombstone = {
+  render (h) {
+    return h('div', {
+      attrs: {
+        class: 'recyclerview-item tombstone'
+      },
+      style: {
+        height: '100px',
+        width: '100%'
+      }
+    }, '')
   }
-  return defaultPosition
 }
 
-class ContentSource {
-  constructor (fetch, itemRender, TombstoneRender, Vue) {
-    this.itemRender = itemRender
-    this.TombstoneRender = TombstoneRender
-    this.fetch = fetch
-    this.Vue = Vue
-  }
-
-  getVm (data, el, item) {
-    if (!this.vmCache[data.id]) {
-      this.vmCache[data.id] = new this.Vue({
-        render: (h) => {
-          return h(this.itemRender, {
-            props: {
-              data: data
-            }
-          })
-        }
-      })
-    }
-    return this.vmCache[data.id]
-  }
-
-  createTombstone (el) {
-    const vm = new this.Vue({
-      render: (h) => {
-        return h(this.TombstoneRender)
-      }
-    })
-    vm.$mount(el)
-    return vm.$el
-  }
-
-  render (data, el, item) {
-    const vm = new this.Vue({
-      el: el,
-      render: (h) => {
-        return h(this.itemRender, {
-          props: {
-            data: data
-          }
-        })
-      }
-    })
-    item.vm = vm
-    return vm.$el
-  }
+const options = {
+  preventDefaultException: { tagName: /^(INPUT|TEXTAREA|BUTTON|SELECT|IMG)$/ },
+  distance: 50,
+  animation_duration_ms: 200,
+  tombstone_class: 'tombstone',
+  invisible_class: 'invisible',
+  prerender: 20,
+  remain: 10,
+  preventDefault: false,
+  column: 1
 }
 
 export default (Vue) => {
@@ -78,9 +48,18 @@ export default (Vue) => {
     name: 'RecyclerView',
     props: {
       fetch: Function,
+      list: Array,
       item: Object,
-      tombstone: Object,
+      loading: Object,
+      tombstone: {
+        type: Object,
+        default: () => Tombstone
+      },
+      column: Number,
       prerender: Number,
+      remain: Number,
+      preventDefault: Boolean,
+      options: Object,
       tag: {
         type: String,
         default: 'div'
@@ -88,15 +67,26 @@ export default (Vue) => {
     },
     render (h) {
       return h(this.tag, {
-        on: {
-          touchstart: this.touchStart,
-          touchmove: this.touchMove,
-          touchend: this.touchEnd,
-          mousedown: this.touchStart,
-          mousemove: this.touchMove,
-          mouseup: this.touchEnd
+        attrs: {
+          class: 'recyclerview-container'
         }
-      }, this.$slots.default)
+      }, [
+        h(this.loading || Loading),
+        h(this.tag, {
+          attrs: {
+            class: 'recyclerview'
+          },
+          on: {
+            touchstart: this._start,
+            touchmove: this._move,
+            touchend: this._end,
+            touchcancel: this._end,
+            mousedown: this._start,
+            mousemove: this._move,
+            mouseup: this._end
+          }
+        })]
+      )
     },
     data () {
       return {
@@ -104,6 +94,7 @@ export default (Vue) => {
           x: 0,
           y: 0
         },
+        _options: {},
         distance: 0,
         pulling: false,
         contentSource: new ContentSource(this.fetch, this.item, this.tombstone, Vue),
@@ -112,50 +103,83 @@ export default (Vue) => {
     },
     mounted () {
       this.init()
-      setTimeout(() => {
-        this.scrollTo()
-      }, 5000)
     },
     beforeDestroy () {
       this.scroller.destroy()
     },
     methods: {
       init () {
+        this._options = assign({}, options, {
+          prerender: this.prerender,
+          remain: this.remain,
+          column: this.column
+        }, this.options)
+
+        this.$list = this.$el.querySelector('.recyclerview')
         this.scroller = new InfiniteScroller(
-          this.$el,
+          this.$list,
+          this.list,
           this.contentSource,
-          {
-            RUNWAY_ITEMS: this.prerender
-          }
+          this._options
         )
       },
-      scrollTo (top) {
-        if (!top) top = 0
-        this.$el.scrollTop = Number(top)
+      scrollToIndex (index) {
+        index = Number(index)
+        this.scroller.scrollToIndex(index)
+        this.$nextTick(() => {
+          this._scrollToBottom()
+        })
       },
-      touchStart (e) {
-        if (this.$el.scrollTop > 0) return
+      _scrollTo (top) {
+        top = top || 0
+        this.$list.scrollTop = Number(top)
+      },
+      _scrollToBottom () {
+        this._scrollTo(this.$list.scrollHeight)
+      },
+      _renderListStyle () {
+        this.$list.style.transform = 'translate3d(0, ' + this.distance + 'px, 0)'
+      },
+      _start (e) {
+        if (this.$list.scrollTop > 0) return
         this.pulling = true
         this.startPointer = getEventPosition(e)
-        this.$el.style.transition = 'transform .5s'
+        this.$list.style.transition = 'transform .2s'
+        if (this.preventDefault && !preventDefaultException(e.target, this._options.preventDefaultException)) {
+          e.preventDefault()
+        }
       },
-      touchMove (e) {
+      _move (e) {
         if (!this.pulling) return
         const pointer = getEventPosition(e)
+        const distance = pointer.y - this.startPointer.y
 
-        this.distance = (pointer.y - this.startPointer.y) * 0.5
-
-        if (this.distance > 50) {
-          this.pulling = false
-          this.distance = 50
+        if (distance < 0) {
+          this._scrollTo(-distance)
+          return
         }
 
-        this.$el.style.transform = 'translate3d(0, ' + this.distance + 'px, 0)'
+        if (this.preventDefault && !preventDefaultException(e.target, this._options.preventDefaultException)) {
+          e.preventDefault()
+        }
+
+        this.distance = Math.floor(distance * 0.5)
+        if (this.distance > this._options.distance) {
+          this.distance = this._options.distance
+        }
+        requestAnimationFrame(this._renderListStyle.bind(this))
       },
-      touchEnd (e) {
+      _end (e) {
+        if (!this.pulling) return
+        if (this.preventDefault && !preventDefaultException(e.target, this._options.preventDefaultException)) {
+          e.preventDefault()
+        }
         this.pulling = false
-        this.$el.style.transform = ''
-        if (this.distance >= 50) {
+        this.$list.style.transition = 'transform .3s'
+        this.$nextTick(() => {
+          this.$list.style.transform = ''
+        })
+        if (this.distance >= this._options.distance) {
           this.distance = 0
           this.scroller.clear()
         }

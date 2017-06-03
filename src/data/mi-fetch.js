@@ -310,14 +310,15 @@ const baseData = [
 
 let id = 0
 
-function pickeOne () {
-    return baseData[Math.floor(Math.random() * baseData.length)]
+export function pickeOne () {
+  return JSON.parse(JSON.stringify(baseData[Math.floor(Math.random() * baseData.length)]))
 }
 
-function getItem () {
+export function getItem () {
   return new Promise(resolve => {
     var item = pickeOne()
-    item.id = ++id
+    item.id = id++
+    item.color = '#' + ((1 << 24) * Math.random() | 0).toString(16)
     var image = new Image()
     image.src = item.img_url
     image.addEventListener('load', () => {
@@ -330,21 +331,32 @@ function getItem () {
   })
 }
 
-export default function fetch (count, items) {
-  count = Math.max(30, count)
+const MAX = 1000
+
+function query (limit, skip) {
+  let count = limit
+  if (skip + limit >= MAX) {
+    count = Math.max(0, MAX - skip)
+  }
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      var items = []
-      for (var i = 0; i < Math.abs(count); i++) {
+      let items = []
+      for (let i = 0; i < count; i++) {
         items[i] = getItem()
       }
       resolve(Promise.all(items))
-    }, 200)
+    }, 20)
   })
+}
+
+export function fetch (limit, skip) {
+  id = skip
+  limit = Math.max(30, limit)
+  return query(limit, skip)
   .then(list => {
     return {
       list: list,
-      count: 1000
+      count: MAX
     }
   })
 }

@@ -12,7 +12,7 @@
 
 <script>
 import MiItem from '../components/MiItem.vue'
-import fetch from '../data/miFetch'
+import { fetch } from '../data/mi-fetch'
 
 export default {
   data () {
@@ -28,7 +28,7 @@ export default {
   },
   methods: {
     init () {
-      fetch(1000)
+      fetch(100, 0)
         .then(data => {
           this.list = data.list
         })

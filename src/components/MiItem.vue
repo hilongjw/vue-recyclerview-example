@@ -1,13 +1,10 @@
 <style>
-.mi-list {
-  list-style: none;
-  background: #fff;
-}
 .mi-item {
   padding: 0 0 3px;
   position: absolute;
   background: #fff;
   width: 100%;
+  list-style: none;
 }
 .mi-item::after {
   content: "";
@@ -68,14 +65,14 @@
 }
 </style>
 <template>
-    <li class="mi-item">
+    <li class="mi-item" @click="add">
         <a class="version-item">
             <div class="version-item-img">
                 <img class="lazy" :src="data.img_url">
             </div>
             <div class="version-item-intro">
                 <div class="version-item-name">
-                    <p>{{data.name}}</p>
+                    <p>{{ showId ? 'id: ' + data.id : '' }} {{data.name}}</p>
                 </div>
                 <div class="version-item-brief">
                     <p>{{ data.product_comment }}</p>
@@ -92,6 +89,17 @@
 export default {
   props: {
     data: Object
+  },
+  data () {
+    return {
+      showId: true
+    }
+  },
+  methods: {
+    add (e) {
+      e.preventDefault()
+      this.showId = !this.showId
+    }
   }
 }
 </script>
