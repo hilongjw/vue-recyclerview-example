@@ -318,6 +318,7 @@ export function getItem () {
   return new Promise(resolve => {
     var item = pickeOne()
     item.id = id++
+    item.height = (300 + Math.floor(Math.random() * 200)) + 'px'
     item.color = '#' + ((1 << 24) * Math.random() | 0).toString(16)
     var image = new Image()
     image.src = item.img_url

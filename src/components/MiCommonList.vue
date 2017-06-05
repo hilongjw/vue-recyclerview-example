@@ -28,7 +28,7 @@ export default {
   },
   methods: {
     init () {
-      fetch(100, 0)
+      fetch(1000, 0)
         .then(data => {
           this.list = data.list
         })

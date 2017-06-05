@@ -40,7 +40,8 @@ const options = {
   prerender: 20,
   remain: 10,
   preventDefault: false,
-  column: 1
+  column: 1,
+  waterflow: false
 }
 
 export default (Vue) => {
@@ -58,6 +59,7 @@ export default (Vue) => {
       column: Number,
       prerender: Number,
       remain: Number,
+      waterflow: Boolean,
       preventDefault: Boolean,
       options: Object,
       tag: {
@@ -106,13 +108,15 @@ export default (Vue) => {
     },
     beforeDestroy () {
       this.scroller.destroy()
+      this.scroller = null
     },
     methods: {
       init () {
         this._options = assign({}, options, {
-          prerender: this.prerender,
-          remain: this.remain,
-          column: this.column
+          prerender: this.prerender || options.prerender,
+          remain: this.remain || options.remain,
+          column: this.column || options.column,
+          waterflow: this.waterflow || options.waterflow
         }, this.options)
 
         this.$list = this.$el.querySelector('.recyclerview')
@@ -124,6 +128,14 @@ export default (Vue) => {
         )
       },
       scrollToIndex (index) {
+        if (this.waterflow) {
+          for (let i = 0, len = this.scroller.items_.length; i < len; i++) {
+            if (i === index) {
+              this._scrollTo(this.scroller.items_[i].top - this.scroller.items_[i].height * this._options.column + this.$list.offsetWidth)
+            }
+          }
+          return
+        }
         index = Number(index)
         this.scroller.scrollToIndex(index)
         this.$nextTick(() => {

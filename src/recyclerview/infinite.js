@@ -17,6 +17,8 @@
  * Author surma https://github.com/surma
  * Modified by Awe @hilongjw
  */
+import { inView } from './util'
+
 const MAX_COUNT = Infinity
 
 /**
@@ -40,11 +42,13 @@ export default function InfiniteScroller (scroller, list, source, options) {
   this.INVISIBLE_CLASS = options.invisible_class
   this.MAX_COUNT = MAX_COUNT
   this.column = options.column || 1
+  this.waterflow = options.waterflow
 
   this.anchorItem = {
     index: 0,
     offset: 0
   }
+  this.timer = null
   this.firstAttachedItem_ = 0
   this.lastAttachedItem_ = 0
   this.anchorScrollTop = 0
@@ -151,7 +155,7 @@ InfiniteScroller.prototype = {
    *     scroll should be anchored to.
    */
   calculateAnchoredItem (initialAnchor, delta) {
-    if (delta == 0) return initialAnchor
+    if (delta === 0) return initialAnchor
     delta += initialAnchor.offset
     var i = initialAnchor.index
     var tombstones = 0
@@ -171,6 +175,8 @@ InfiniteScroller.prototype = {
     }
     i += tombstones
     delta -= tombstones * this.tombstoneSize_
+    i = Math.min(i, this.MAX_COUNT - 1)
+
     return {
       index: Math.floor(i / this.column) * this.column,
       offset: delta
@@ -205,19 +211,33 @@ InfiniteScroller.prototype = {
   },
 
   getUnUsedNodes () {
-    for (let i = 0; i < this.items_.length; i++) {
-      if (i === this.firstAttachedItem_) {
-        i = this.lastAttachedItem_ - 1
-        continue
+    if (this.waterflow) {
+      for (let i = 0; i < this.items_.length; i++) {
+        if (this.items_[i].node && !inView(this.items_[i].node)) {
+          if (this.items_[i].vm) {
+            this.clearItem(this.items_[i])
+          } else {
+            this.clearTombstone(this.items_[i])
+          }
+          this.items_[i].vm = null
+          this.items_[i].node = null
+        }
       }
-      if (this.items_[i].vm) {
-        this.clearItem(this.items_[i])
-      } else {
-        this.clearTombstone(this.items_[i])
-      }
+    } else {
+      for (let i = 0; i < this.items_.length; i++) {
+        if (i === this.firstAttachedItem_) {
+          i = this.lastAttachedItem_ - 1
+          continue
+        }
+        if (this.items_[i].vm) {
+          this.clearItem(this.items_[i])
+        } else {
+          this.clearTombstone(this.items_[i])
+        }
 
-      this.items_[i].vm = null
-      this.items_[i].node = null
+        this.items_[i].vm = null
+        this.items_[i].node = null
+      }
     }
   },
 
@@ -252,6 +272,7 @@ InfiniteScroller.prototype = {
     // that we didn't used to know.
     // TODO: We should only need to do this when a height of an item becomes
     // known above.
+
     this.anchorScrollTop = 0
     for (let i = 0; i < this.anchorItem.index; i++) {
       this.anchorScrollTop += this.items_[i].height || this.tombstoneSize_
@@ -289,21 +310,53 @@ InfiniteScroller.prototype = {
     let i
     let anim
     let x = 0
+    let y = 0
+    let row = 0
+    let curPosList
+    
+    if (this.waterflow && !this.posList) {
+      this.posList = {
+        data: {
+          0: Array.from({ length: this.column }).map(i => this.curPos)
+        },
+        get (row, col) {
+          if (!this.data[row]) {
+            this.data[row] = Array.from({ length: this.column }).map(i => this.curPos)
+          }
+          if (col === undefined) return this.data[row]
+          return this.data[row][col]
+        },
+        set (row, col, val) {
+          this.get(row)[col] = val
+        }
+      }
+    }
+
+    let size = 0
+
     for (i = this.firstAttachedItem_; i < this.lastAttachedItem_; i++) {
       anim = tombstoneAnimations[i]
+      if (this.waterflow) {
+        row = Math.floor(i / this.column)
+      }
       x = (i % this.column) * (this.items_[i].width || this.tombstoneWidth_)
+      y = this.waterflow ? this.posList.get(row, i % this.column) : this.curPos
       if (anim) {
         anim[0].style.transition = 'transform ' + this.ANIMATION_DURATION_MS + 'ms, opacity ' + this.ANIMATION_DURATION_MS + 'ms'
-        anim[0].style.transform = 'translate3d(' + x + 'px,' + this.curPos + 'px, 0) scale(' + (this.items_[i].width / this.tombstoneWidth_) + ', ' + (this.items_[i].height / this.tombstoneSize_) + ')'
+        anim[0].style.transform = 'translate3d(' + x + 'px,' + y + 'px, 0) scale(' + (this.items_[i].width / this.tombstoneWidth_) + ', ' + (this.items_[i].height / this.tombstoneSize_) + ')'
         anim[0].style.opacity = 0
       }
       if (this.curPos !== this.items_[i].top) {
         if (!anim) this.items_[i].node.style.transition = ''
-        this.items_[i].node.style.transform = 'translate3d('+ x + 'px,' + this.curPos + 'px, 0)'
+        this.items_[i].node.style.transform = 'translate3d('+ x + 'px,' + y + 'px, 0)'
       }
-      this.items_[i].top = this.curPos
+      this.items_[i].top = y
+      
       if ((i + 1) % this.column === 0) {
-        this.curPos += (this.items_[i].height | this.tombstoneSize_) * this.column
+        this.curPos += (this.items_[i].height || this.tombstoneSize_) * this.column
+      }
+      if (this.waterflow) {
+        this.posList.set(row + 1, i % this.column, y + (this.items_[i].height || this.tombstoneSize_) * this.column)
       }
     }
   },
@@ -366,10 +419,10 @@ InfiniteScroller.prototype = {
     return tombstoneAnimations
   },
 
-  cacheItemHeight () {
+  cacheItemHeight (force) {
     for (let i = this.firstAttachedItem_; i < this.lastAttachedItem_; i++) {
       // cacheItemsHeight
-      if (this.items_[i].data && !this.items_[i].height) {
+      if (this.items_[i].data && (force || !this.items_[i].height)) {
         this.items_[i].height = this.items_[i].node.offsetHeight / this.column
         this.items_[i].width = this.items_[i].node.offsetWidth
       }
@@ -412,7 +465,8 @@ InfiniteScroller.prototype = {
   },
 
   scrollToIndex (index) {
-    this.fill(0, index + 1)
+    const commonItemCount = this.lastAttachedItem_ - this.firstAttachedItem_
+    this.fill(index - commonItemCount, index + 1)
   },
 
   setScrollRunway () {
@@ -495,6 +549,7 @@ InfiniteScroller.prototype = {
 
     this.getUnUsedNodes()
     this.clearUnUsedNodes()
+
     this.items_ = []
 
     this.onResize_()

@@ -11,6 +11,10 @@ html, body {
   font-family: 'Roboto', sans-serif;
   -webkit-tap-highlight-color: rgba(0,0,0,0);
 }
+html .wechat-list,
+.wechat .recyclerview {
+  background: #efefef;
+}
 .switch {
   position: fixed;
   top: 50px;
@@ -62,16 +66,17 @@ html, body {
     </div>
 
     <RecyclerView 
-      v-if="listType === 'wechat recyclerview'" 
+      v-if="listType === 'wechat-recyclerview'" 
       key="wechat"
       class="recyclerview-container wechat" 
       :fetch="wechatFetch" 
       :item="ChatItem" 
       :tombstone="Tombstone"
-      :prerender="30"
+      :prerender="10"
+      :remain="10"
       ></RecyclerView>
 
-    <CommonList v-if="listType === 'listview'" class="recyclerview common" ></CommonList>
+    <CommonList v-if="listType === 'listview'" class="recyclerview wechat-list common" ></CommonList>
     
     <RecyclerView 
       ref="RecyclerView"
@@ -86,14 +91,15 @@ html, body {
     ></RecyclerView>
 
     <RecyclerView 
+      v-if="listType === 'Multiple-columns'" 
       ref="RecyclerView"
-      v-if="listType === 'Multiple columns'" 
-      :prerender="24"
-      :remain="10"
+      :prerender="20"
+      :remain="20"
       :column="3"
       class="recyclerview-container testlist"
       key="multi"
       :list="list"
+      :waterflow="true"
       :fetch="MiFetch" 
       :item="TestItem" 
       :tombstone="TestTombstone"
@@ -408,7 +414,7 @@ export default {
       actionModal: {
         show: false,
         actions: [{
-          text: 'wechat recyclerview',
+          text: 'wechat-recyclerview',
           icon: 'icon-wechat1',
           handler: this.actionHandler
         }, {
@@ -424,14 +430,14 @@ export default {
           icon: 'icon-mi',
           handler: this.actionHandler
         }, {
-          text: 'Multiple columns',
+          text: 'Multiple-columns',
           icon: 'icon-mi',
           handler: this.actionHandler
         }]
       },
       list: [], // JSON.parse(JSON.stringify(testData)),
       actionModalShow: false,
-      listType: 'mi recyclerview',
+      listType: '',
       messages: [],
       wechatFetch: wechatFetch,
       MiFetch: fetch,
@@ -445,6 +451,11 @@ export default {
   },
   mounted () {
     initStat()
+    if (window.location.hash) {
+      this.listType = window.location.hash.replace('#', '')
+    } else {
+      this.listType = 'mi recyclerview'
+    }
   },
   components: {
     CommonList,
@@ -457,9 +468,9 @@ export default {
       this.toogleModal()
     },
     scrollToBottom () {
-      // const RecyclerView = this.$refs.RecyclerView
+      const RecyclerView = this.$refs.RecyclerView
       // const len = this.list.length
-      // RecyclerView.scrollToIndex(len)
+      RecyclerView && RecyclerView.scrollToIndex(99)
       // this.list = this.list.concat(JSON.parse(JSON.stringify(testData)))
     },
     toogleModal () {
