@@ -7,7 +7,7 @@ function pickRandom (a) {
   return a[Math.floor(Math.random() * a.length)]
 }
 
-function getItem () {
+export function getItem () {
   return new Promise(resolve => {
     var item = {
       show: true,
@@ -19,7 +19,7 @@ function getItem () {
       message: pickRandom(MESSAGES)
     }
     if (item.image === '') {
-      resolve(item)
+      return resolve(item)
     }
     var image = new Image()
     image.src = item.image
@@ -33,7 +33,7 @@ function getItem () {
   })
 }
 
-export default function fetch (count, items) {
+export function fetch (count, items) {
   count = Math.max(30, count)
   return new Promise((resolve, reject) => {
     setTimeout(() => {

@@ -41,7 +41,9 @@ const options = {
   remain: 10,
   preventDefault: false,
   column: 1,
-  waterflow: false
+  waterflow: false,
+  cacheVM: 0,
+  props: {}
 }
 
 export default (Vue) => {
@@ -99,7 +101,7 @@ export default (Vue) => {
         _options: {},
         distance: 0,
         pulling: false,
-        contentSource: new ContentSource(this.fetch, this.item, this.tombstone, Vue),
+        _contentSource: null,
         scroller: null
       }
     },
@@ -116,16 +118,23 @@ export default (Vue) => {
           prerender: this.prerender || options.prerender,
           remain: this.remain || options.remain,
           column: this.column || options.column,
-          waterflow: this.waterflow || options.waterflow
+          waterflow: this.waterflow || options.waterflow,
+          fetch: this.fetch,
+          list: this.list,
+          item: this.item,
+          loading: this.loading,
+          tombstone: this.tombstone
         }, this.options)
+
+        this._contentSource = new ContentSource(Vue, this._options)
 
         this.$list = this.$el.querySelector('.recyclerview')
         this.scroller = new InfiniteScroller(
           this.$list,
-          this.list,
-          this.contentSource,
+          this._contentSource,
           this._options
         )
+        this.$emit('inited')
       },
       scrollToIndex (index) {
         if (this.waterflow) {

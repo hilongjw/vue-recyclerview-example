@@ -54,6 +54,33 @@ html .wechat-list,
   display: flex;
   flex-wrap: wrap;
 }
+.chat-view-footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  height: 50px;
+}
+.wechat {
+  height: calc(100vh - 100px);
+}
+.chat-input {
+  width: 100%;
+  height: 50px;
+  border: none;
+  outline: none;
+  padding: 5px;
+  line-height: 14px;
+}
+.chat-send-btn {
+  flex-shrink: 0;
+  width: 100px;
+  height: 50px;
+  background: #8BC34A;
+  border: none;
+  color: #fff;
+  font-size: 14px;
+}
 </style>
 
 <template>
@@ -65,16 +92,24 @@ html .wechat-list,
       </div>
     </div>
 
-    <RecyclerView 
-      v-if="listType === 'wechat-recyclerview'" 
-      key="wechat"
-      class="recyclerview-container wechat" 
-      :fetch="wechatFetch" 
-      :item="ChatItem" 
-      :tombstone="Tombstone"
-      :prerender="10"
-      :remain="10"
-      ></RecyclerView>
+    <div class="chat-view" v-if="listType === 'wechat-recyclerview'" >
+      <RecyclerView 
+        ref="RecyclerView"
+        key="wechat"
+        class="recyclerview-container wechat" 
+        :fetch="wechatFetch" 
+        :item="ChatItem" 
+        :tombstone="Tombstone"
+        :prerender="10"
+        :remain="10"
+        :options="wechatOptions"
+        @inited="initScrollToBottom"
+        ></RecyclerView>
+        <div class="chat-view-footer">
+          <textarea v-model="input" @keyup.enter="addMessage" class="chat-input"></textarea>
+          <button class="chat-send-btn" @click="addMessage">send</button>
+        </div>
+    </div>
 
     <CommonList v-if="listType === 'listview'" class="recyclerview wechat-list common" ></CommonList>
     
@@ -121,7 +156,7 @@ import Tombstone from './components/Tombstone'
 import MiItem from './components/MiItem.vue'
 import MiTomstone from './components/MiTombstone.vue'
 import initStat from './stat-config'
-import wechatFetch from './data/wechat-fetch'
+import * as wechatFetch from './data/wechat-fetch'
 import CommonList from './components/CommonList.vue'
 import MiCommonList from './components/MiCommonList.vue'
 import ActionModal from './components/ActionModal.vue'
@@ -129,288 +164,18 @@ import TestItem from './components/TestItem.vue'
 import TestTombstone from './components/TestTombstone.vue'
 import { fetch } from './data/mi-fetch'
 
-// const testData = [{
-//   vm: null,
-//   data: {
-//     'id': '5287',
-//     'stand_img_id': '8880692',
-//     'name': '小米USB-C电源适配器（45W）',
-//     'market_price_max': '99.00',
-//     'market_price_min': '99.00',
-//     'price_max': '99.00',
-//     'price_min': '99.00',
-//     'has_store': '0',
-//     'is_cos': true,
-//     'img_url': '//cdn.cnbj0.fds.api.mi-img.com/b2c-mimall-media/648060ed1a8ef00f5756679ef7ba6971.jpg',
-//     'action': {
-//       'log_code': '30000001110011001'
-//     },
-//     'product_comment': 'PD2.0 协议 / 精致小巧 / 可为 QC3.0 设备充电 / 附赠USB-C to USB-C数据线\n',
-//     'tag_img': ''
-//   },
-//   node: null,
-//   height: 100,
-//   width: 100,
-//   top: 0
-// }, {
-//   vm: null,
-//   data: {
-//     'id': '1123',
-//     'stand_img_id': '8880692',
-//     'name': '小米USB-C电源适配器（45W）',
-//     'market_price_max': '99.00',
-//     'market_price_min': '99.00',
-//     'price_max': '99.00',
-//     'price_min': '99.00',
-//     'has_store': '0',
-//     'is_cos': true,
-//     'img_url': '//cdn.cnbj0.fds.api.mi-img.com/b2c-mimall-media/648060ed1a8ef00f5756679ef7ba6971.jpg',
-//     'action': {
-//       'log_code': '30000001110011001'
-//     },
-//     'product_comment': 'PD2.0 协议 / 精致小巧 / 可为 QC3.0 设备充电 / 附赠USB-C to USB-C数据线\n',
-//     'tag_img': ''
-//   },
-//   node: null,
-//   height: 100,
-//   width: 100,
-//   top: 0
-// }, {
-//   vm: null,
-//   data: {
-//     'id': '123123',
-//     'stand_img_id': '8880692',
-//     'name': '小米USB-C电源适配器（45W）',
-//     'market_price_max': '99.00',
-//     'market_price_min': '99.00',
-//     'price_max': '99.00',
-//     'price_min': '99.00',
-//     'has_store': '0',
-//     'is_cos': true,
-//     'img_url': '//cdn.cnbj0.fds.api.mi-img.com/b2c-mimall-media/648060ed1a8ef00f5756679ef7ba6971.jpg',
-//     'action': {
-//       'log_code': '30000001110011001'
-//     },
-//     'product_comment': 'PD2.0 协议 / 精致小巧 / 可为 QC3.0 设备充电 / 附赠USB-C to USB-C数据线\n',
-//     'tag_img': ''
-//   },
-//   node: null,
-//   height: 100,
-//   width: 100,
-//   top: 0
-// }, {
-//   vm: null,
-//   data: {
-//     'id': '5287',
-//     'stand_img_id': '8880692',
-//     'name': '小米USB-C电源适配器（45W）',
-//     'market_price_max': '99.00',
-//     'market_price_min': '99.00',
-//     'price_max': '99.00',
-//     'price_min': '99.00',
-//     'has_store': '0',
-//     'is_cos': true,
-//     'img_url': '//cdn.cnbj0.fds.api.mi-img.com/b2c-mimall-media/648060ed1a8ef00f5756679ef7ba6971.jpg',
-//     'action': {
-//       'log_code': '30000001110011001'
-//     },
-//     'product_comment': 'PD2.0 协议 / 精致小巧 / 可为 QC3.0 设备充电 / 附赠USB-C to USB-C数据线\n',
-//     'tag_img': ''
-//   },
-//   node: null,
-//   height: 100,
-//   width: 100,
-//   top: 0
-// }, {
-//   vm: null,
-//   data: {
-//     'id': '1',
-//     'stand_img_id': '8880692',
-//     'name': '小米USB-C电源适配器（45W）',
-//     'market_price_max': '99.00',
-//     'market_price_min': '99.00',
-//     'price_max': '99.00',
-//     'price_min': '99.00',
-//     'has_store': '0',
-//     'is_cos': true,
-//     'img_url': '//cdn.cnbj0.fds.api.mi-img.com/b2c-mimall-media/648060ed1a8ef00f5756679ef7ba6971.jpg',
-//     'action': {
-//       'log_code': '30000001110011001'
-//     },
-//     'product_comment': 'PD2.0 协议 / 精致小巧 / 可为 QC3.0 设备充电 / 附赠USB-C to USB-C数据线\n',
-//     'tag_img': ''
-//   },
-//   node: null,
-//   height: 100,
-//   width: 100,
-//   top: 0
-// }, {
-//   vm: null,
-//   data: {
-//     'id': '123123',
-//     'stand_img_id': '8880692',
-//     'name': '小米USB-C电源适配器（45W）',
-//     'market_price_max': '99.00',
-//     'market_price_min': '99.00',
-//     'price_max': '99.00',
-//     'price_min': '99.00',
-//     'has_store': '0',
-//     'is_cos': true,
-//     'img_url': '//cdn.cnbj0.fds.api.mi-img.com/b2c-mimall-media/648060ed1a8ef00f5756679ef7ba6971.jpg',
-//     'action': {
-//       'log_code': '30000001110011001'
-//     },
-//     'product_comment': 'PD2.0 协议 / 精致小巧 / 可为 QC3.0 设备充电 / 附赠USB-C to USB-C数据线\n',
-//     'tag_img': ''
-//   },
-//   node: null,
-//   height: 100,
-//   width: 100,
-//   top: 0
-// }, {
-//   vm: null,
-//   data: {
-//     'id': '5287',
-//     'stand_img_id': '8880692',
-//     'name': '小米USB-C电源适配器（45W）',
-//     'market_price_max': '99.00',
-//     'market_price_min': '99.00',
-//     'price_max': '99.00',
-//     'price_min': '99.00',
-//     'has_store': '0',
-//     'is_cos': true,
-//     'img_url': '//cdn.cnbj0.fds.api.mi-img.com/b2c-mimall-media/648060ed1a8ef00f5756679ef7ba6971.jpg',
-//     'action': {
-//       'log_code': '30000001110011001'
-//     },
-//     'product_comment': 'PD2.0 协议 / 精致小巧 / 可为 QC3.0 设备充电 / 附赠USB-C to USB-C数据线\n',
-//     'tag_img': ''
-//   },
-//   node: null,
-//   height: 100,
-//   width: 100,
-//   top: 0
-// }, {
-//   vm: null,
-//   data: {
-//     'id': '1123',
-//     'stand_img_id': '8880692',
-//     'name': '小米USB-C电源适配器（45W）',
-//     'market_price_max': '99.00',
-//     'market_price_min': '99.00',
-//     'price_max': '99.00',
-//     'price_min': '99.00',
-//     'has_store': '0',
-//     'is_cos': true,
-//     'img_url': '//cdn.cnbj0.fds.api.mi-img.com/b2c-mimall-media/648060ed1a8ef00f5756679ef7ba6971.jpg',
-//     'action': {
-//       'log_code': '30000001110011001'
-//     },
-//     'product_comment': 'PD2.0 协议 / 精致小巧 / 可为 QC3.0 设备充电 / 附赠USB-C to USB-C数据线\n',
-//     'tag_img': ''
-//   },
-//   node: null,
-//   height: 100,
-//   width: 100,
-//   top: 0
-// }, {
-//   vm: null,
-//   data: {
-//     'id': '123123',
-//     'stand_img_id': '8880692',
-//     'name': '小米USB-C电源适配器（45W）',
-//     'market_price_max': '99.00',
-//     'market_price_min': '99.00',
-//     'price_max': '99.00',
-//     'price_min': '99.00',
-//     'has_store': '0',
-//     'is_cos': true,
-//     'img_url': '//cdn.cnbj0.fds.api.mi-img.com/b2c-mimall-media/648060ed1a8ef00f5756679ef7ba6971.jpg',
-//     'action': {
-//       'log_code': '30000001110011001'
-//     },
-//     'product_comment': 'PD2.0 协议 / 精致小巧 / 可为 QC3.0 设备充电 / 附赠USB-C to USB-C数据线\n',
-//     'tag_img': ''
-//   },
-//   node: null,
-//   height: 100,
-//   width: 100,
-//   top: 0
-// }, {
-//   vm: null,
-//   data: {
-//     'id': '5287',
-//     'stand_img_id': '8880692',
-//     'name': '小米USB-C电源适配器（45W）',
-//     'market_price_max': '99.00',
-//     'market_price_min': '99.00',
-//     'price_max': '99.00',
-//     'price_min': '99.00',
-//     'has_store': '0',
-//     'is_cos': true,
-//     'img_url': '//cdn.cnbj0.fds.api.mi-img.com/b2c-mimall-media/648060ed1a8ef00f5756679ef7ba6971.jpg',
-//     'action': {
-//       'log_code': '30000001110011001'
-//     },
-//     'product_comment': 'PD2.0 协议 / 精致小巧 / 可为 QC3.0 设备充电 / 附赠USB-C to USB-C数据线\n',
-//     'tag_img': ''
-//   },
-//   node: null,
-//   height: 100,
-//   width: 100,
-//   top: 0
-// }, {
-//   vm: null,
-//   data: {
-//     'id': '1',
-//     'stand_img_id': '8880692',
-//     'name': '小米USB-C电源适配器（45W）',
-//     'market_price_max': '99.00',
-//     'market_price_min': '99.00',
-//     'price_max': '99.00',
-//     'price_min': '99.00',
-//     'has_store': '0',
-//     'is_cos': true,
-//     'img_url': '//cdn.cnbj0.fds.api.mi-img.com/b2c-mimall-media/648060ed1a8ef00f5756679ef7ba6971.jpg',
-//     'action': {
-//       'log_code': '30000001110011001'
-//     },
-//     'product_comment': 'PD2.0 协议 / 精致小巧 / 可为 QC3.0 设备充电 / 附赠USB-C to USB-C数据线\n',
-//     'tag_img': ''
-//   },
-//   node: null,
-//   height: 100,
-//   width: 100,
-//   top: 0
-// }, {
-//   vm: null,
-//   data: {
-//     'id': '123123',
-//     'stand_img_id': '8880692',
-//     'name': '小米USB-C电源适配器（45W）',
-//     'market_price_max': '99.00',
-//     'market_price_min': '99.00',
-//     'price_max': '99.00',
-//     'price_min': '99.00',
-//     'has_store': '0',
-//     'is_cos': true,
-//     'img_url': '//cdn.cnbj0.fds.api.mi-img.com/b2c-mimall-media/648060ed1a8ef00f5756679ef7ba6971.jpg',
-//     'action': {
-//       'log_code': '30000001110011001'
-//     },
-//     'product_comment': 'PD2.0 协议 / 精致小巧 / 可为 QC3.0 设备充电 / 附赠USB-C to USB-C数据线\n',
-//     'tag_img': ''
-//   },
-//   node: null,
-//   height: 100,
-//   width: 100,
-//   top: 0
-// }]
-
 export default {
   name: 'app',
   data () {
     return {
+      input: '',
+      wechatOptions: {
+        props: {
+          color: {
+            value: ''
+          }
+        }
+      },
       actionModal: {
         show: false,
         actions: [{
@@ -436,14 +201,14 @@ export default {
         }]
       },
       list: [], // JSON.parse(JSON.stringify(testData)),
+      wechatFetch: wechatFetch.fetch,
+      ChatItem,
+      Tombstone,
       actionModalShow: false,
       listType: '',
       messages: [],
-      wechatFetch: wechatFetch,
       MiFetch: fetch,
       MiItem,
-      ChatItem,
-      Tombstone,
       MiTomstone,
       TestTombstone,
       TestItem
@@ -467,10 +232,45 @@ export default {
       this.listType = action.text
       this.toogleModal()
     },
+    initScrollToBottom () {
+      this.$nextTick(() => {
+        const RecyclerView = this.$refs.RecyclerView
+        RecyclerView && RecyclerView.scrollToIndex(1000)
+      })
+    },
+    wechatScrollToBottom () {
+      const RecyclerView = this.$refs.RecyclerView
+      RecyclerView._scrollToBottom()
+    },
+    replyMessage () {
+      setTimeout(() => {
+        this.addMsg(null, false)
+      }, 500 + 1500 * Math.random())
+    },
+    addMsg (msg, sender, cb) {
+      const RecyclerView = this.$refs.RecyclerView
+      wechatFetch.getItem()
+        .then(data => {
+          if (msg) data.message = msg
+          data.self = sender
+          cb && cb()
+          this.wechatOptions.props.color.value = '#' + ((1 << 24) * Math.random() | 0).toString(16)
+          RecyclerView.scroller.MAX_COUNT += 1
+          RecyclerView.scroller.addContent([data])
+          this.wechatScrollToBottom()
+        })
+    },
+    addMessage () {
+      this.addMsg(this.input, true, () => {
+        this.input = ''
+        this.replyMessage()
+      })
+    },
     scrollToBottom () {
       const RecyclerView = this.$refs.RecyclerView
-      // const len = this.list.length
-      RecyclerView && RecyclerView.scrollToIndex(99)
+      if (!RecyclerView) return
+      const len = RecyclerView.scroller.MAX_COUNT
+      RecyclerView.scrollToIndex(len)
       // this.list = this.list.concat(JSON.parse(JSON.stringify(testData)))
     },
     toogleModal () {

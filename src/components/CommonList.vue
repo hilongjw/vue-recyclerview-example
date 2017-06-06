@@ -7,7 +7,7 @@
 <script>
 import ChatItem from './ChatItem.vue'
 import Tombstone from './Tombstone.vue'
-import fetch from '../data/wechat-fetch'
+import { fetch } from '../data/wechat-fetch'
 
 export default {
   data () {

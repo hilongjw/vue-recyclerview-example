@@ -100,8 +100,8 @@
   <li class="chat-item" @click="say" :class="{ 'from-me': data.self }" :data-id="data.id">
     <img class="avatar" width="48" height="48" :src="data.avatar">
     <div class="bubble">
-      <p>
-        {{data.id + ' : ' + data.message}}
+      <p :style="{ color: color && color.value }" >
+        {{data.id + data.message}}
       </p>
       <img width="300" height="300" :class="{ invisible: !data.image  }"  :src="data.image">
       <!-- <div class="meta">
@@ -114,7 +114,8 @@
 <script>
 export default {
   props: {
-    data: Object
+    data: Object,
+    color: Object
   },
   methods: {
     say () {
