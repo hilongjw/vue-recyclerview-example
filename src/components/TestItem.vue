@@ -6,6 +6,7 @@
   background: #000;
   border: 1px solid #000;
   box-sizing: border-box;
+  will-change: transform;
 }
 .simple-item-id {
   position: absolute;

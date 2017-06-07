@@ -346,7 +346,7 @@ function query (limit, skip) {
         items[i] = getItem()
       }
       resolve(Promise.all(items))
-    }, 20)
+    }, 200)
   })
 }
 
