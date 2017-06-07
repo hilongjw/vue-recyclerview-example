@@ -61,6 +61,7 @@ export default function InfiniteScroller (scroller, source, options) {
   this.loadedItems_ = 0
   this.requestInProgress_ = false
   this.cacheVM = options.cacheVM
+  this.options = options
 
   if (!this.source_.fetch) {
     this.setItems(options.list)
@@ -113,7 +114,7 @@ InfiniteScroller.prototype = {
     // correct after the item content undergoes layout.
     for (var i = 0; i < this.items_.length; i++) {
       this.items_[i].top = -1
-      this.items_[i].height = this.items_[i].width = 0
+      this.items_[i].height = this.items_[i].width = this.items_[i].cacheHeightCount = 0
     }
     this.onScroll_()
   },
@@ -212,38 +213,49 @@ InfiniteScroller.prototype = {
     return this.source_.createTombstone(this.baseNode.cloneNode(true))
   },
 
-  getUnUsedNodes () {
-    // if (this.waterflow && false) {
-    //   for (let i = 0; i < this.items_.length; i++) {
-    //     if (this.items_[i].node && !inView(this.items_[i].node)) {
-    //       if (this.items_[i].vm) {
-    //         this.clearItem(this.items_[i])
-    //       } else {
-    //         this.clearTombstone(this.items_[i])
-    //       }
-    //       this.items_[i].vm = null
-    //       this.items_[i].node = null
-    //     }
-    //   }
-    // } else {
-    for (let i = 0; i < this.items_.length; i++) {
-      if (i === this.firstAttachedItem_) {
-        i = this.lastAttachedItem_ - 1
-        continue
-      }
-      if (this.items_[i].vm) {
-        this.clearItem(this.items_[i])
-      } else {
-        this.clearTombstone(this.items_[i])
-      }
+  layoutInView (i) {
+    const top = this.posList.get(Math.floor(i / this.column) - 1, i % this.column)
+    if (!top) return true
+    return (Math.abs(top - this.anchorScrollTop) < window.innerHeight * 2)
+  },
 
-      this.items_[i].vm = null
-      this.items_[i].node = null
+  getUnUsedNodes () {
+    if (this.waterflow) {
+      for (let i = 0, len = this.items_.length; i < len; i++) {
+        this.layoutInView(i)
+        if (this.items_[i].node && !this.layoutInView(i)) {//!inView(this.items_[i].node)) {
+          if (this.items_[i].vm) {
+            this.clearItem(this.items_[i])
+          } else {
+            this.clearTombstone(this.items_[i])
+          }
+          this.items_[i].vm = null
+          this.items_[i].node = null
+        }
+      }
+    } else {
+      for (let i = 0, len = this.items_.length; i < len; i++) {
+        if (i === this.firstAttachedItem_) {
+          i = this.lastAttachedItem_ - 1
+          continue
+        }
+        if (this.items_[i].vm) {
+          this.clearItem(this.items_[i])
+        } else {
+          this.clearTombstone(this.items_[i])
+        }
+
+        this.items_[i].vm = null
+        this.items_[i].node = null
+      }
     }
   },
 
   clearItem (item) {
-    if (item.vm) {
+    if (this.options.reuseVM) {
+      this.scroller_.removeChild(item.node)
+      this.source_.free(item.data)
+    } else {
       if (this.cacheVM && item.node) {
         return this.scroller_.removeChild(item.node)
       }
@@ -251,7 +263,7 @@ InfiniteScroller.prototype = {
       if (item.node) {
         this.unusedNodes.push(item.node)
       }
-    }
+    }    
   },
 
   clearTombstone (item) {
@@ -302,7 +314,7 @@ InfiniteScroller.prototype = {
 
     this.posList = {
       data: {
-        0: data // Array.from({ length: this.column }).map(i => this.curPos)
+        0: data
       },
       get (row, col) {
         if (!this.data[row]) {
@@ -384,10 +396,6 @@ InfiniteScroller.prototype = {
     let newNodes = []
     let i
 
-    if (this.waterflow) {
-      this.lastAttachedItem_ = Math.ceil(this.lastAttachedItem_ / 50) * 50
-    }
-
     const last = Math.floor((this.lastAttachedItem_ + this.RUNWAY_ITEMS) / this.column) * this.column
 
     if (last > this.MAX_COUNT) {
@@ -443,11 +451,10 @@ InfiniteScroller.prototype = {
         this.items_[i].height = this.items_[i].node.offsetHeight / this.column
         this.items_[i].width = this.items_[i].node.offsetWidth
         this.items_[i].cacheHeightCount = 0
-      } else if (this.items_[i].cacheHeightCount < 2) {
-        // if (!this.items_[i].cacheHeightCount) this.items_[i].cacheHeightCount = 0
+      } else if (this.items_[i].cacheHeightCount < 10) {
+        // if height's cache is not match
         this.items_[i].cacheHeightCount++
         if (this.items_[i].height && this.items_[i].node && this.items_[i].height !== this.items_[i].node.offsetHeight / this.column) {
-          // if height's cache is not match
           this.items_[i].height = this.items_[i].node.offsetHeight / this.column
         }
       }

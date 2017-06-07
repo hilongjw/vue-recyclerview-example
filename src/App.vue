@@ -135,7 +135,7 @@ html .wechat-list,
       key="multi"
       :list="list"
       :waterflow="true"
-      :fetch="MiFetch" 
+      :fetch="waterFlowFetch" 
       :item="TestItem" 
       :tombstone="TestTombstone"
     ></RecyclerView>
@@ -163,6 +163,7 @@ import ActionModal from './components/ActionModal.vue'
 import TestItem from './components/TestItem.vue'
 import TestTombstone from './components/TestTombstone.vue'
 import { fetch } from './data/mi-fetch'
+import { fetch as waterFlowFetch } from './data/waterflow-fetch'
 
 export default {
   name: 'app',
@@ -201,6 +202,7 @@ export default {
         }]
       },
       list: [], // JSON.parse(JSON.stringify(testData)),
+      waterFlowFetch: waterFlowFetch,
       wechatFetch: wechatFetch.fetch,
       ChatItem,
       Tombstone,
