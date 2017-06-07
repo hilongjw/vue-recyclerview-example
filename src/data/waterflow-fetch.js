@@ -30,7 +30,7 @@ export function fetch (count, items) {
         items[i] = getItem()
       }
       resolve(Promise.all(items))
-    }, 500)
+    }, 50)
   })
   .then(list => {
     return {

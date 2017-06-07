@@ -133,11 +133,10 @@ html .wechat-list,
       :column="3"
       class="recyclerview-container testlist"
       key="multi"
-      :list="list"
-      :waterflow="true"
       :fetch="waterFlowFetch" 
       :item="TestItem" 
       :tombstone="TestTombstone"
+      :options="waterflowOptions"
     ></RecyclerView>
 
     <MiCommonList v-if="listType === 'mi listview'" class="recyclerview common" ></MiCommonList>
@@ -176,6 +175,10 @@ export default {
             value: ''
           }
         }
+      },
+      waterflowOptions: {
+        waterflow: true,
+        reuseVM: true
       },
       actionModal: {
         show: false,
