@@ -217,7 +217,7 @@ InfiniteScroller.prototype = {
     const top = this.posList.get(Math.floor(i / this.column), i % this.column)
     if (!top) return true
     const index = top - this.anchorScrollTop
-    return (index > -window.innerHeight * .5 && index < window.innerHeight)
+    return (index > -window.innerHeight * this.options.waterflowRemain && index < window.innerHeight * this.options.waterflowPrerender)
   },
 
   getUnUsedNodes (clearAll) {
@@ -253,7 +253,7 @@ InfiniteScroller.prototype = {
 
   clearItem (item) {
     if (this.options.reuseVM) {
-      this.scroller_.removeChild(item.node)
+      item.node.parentNode && this.scroller_.removeChild(item.node)
       this.source_.free(item.data)
     } else {
       if (this.cacheVM && item.node) {
@@ -539,14 +539,35 @@ InfiniteScroller.prototype = {
   maybeRequestContent () {
     // Don't issue another request if one is already in progress as we don't
     // know where to start the next request yet.
-    if (this.requestInProgress_) return
-    var itemsNeeded = this.lastAttachedItem_ - this.loadedItems_;
+    console.log('maybeRequestContent', this.lastAttachedItem_, this.firstAttachedItem_, this.requestInProgress_)
+
+    // if (this.requestInProgress_) return
+    this.lastAttachedItem_ = Math.min(this.lastAttachedItem_, this.MAX_COUNT)
+    
+    const itemsNeeded = this.lastAttachedItem_ - this.firstAttachedItem_
+
+    console.log('maybeRequestContent', this.lastAttachedItem_, this.firstAttachedItem_, itemsNeeded)
     if (itemsNeeded <= 0) return
     this.requestInProgress_ = true
+
+    if (!this.loadedFlag) this.loadedFlag = {}
+    console.log(this.firstAttachedItem_ + '-' + itemsNeeded)
+    if (this.loadedFlag[this.firstAttachedItem_ + '-' + itemsNeeded]) return console.log('loaded')
+    this.loadedFlag[this.firstAttachedItem_ + '-' + itemsNeeded] = true
+
     if (!this.source_.fetch) return
-    this.source_.fetch(itemsNeeded, this.loadedItems_).then(data => {
+
+    console.log('itemsNeeded, this.firstAttachedItem_', itemsNeeded, this.firstAttachedItem_)
+    this.source_.fetch(itemsNeeded, this.firstAttachedItem_)
+    .then(data => {
+      this.requestInProgress_ = false
+      console.log('this.requestInProgress_', this.requestInProgress_)
+      console.log('got data', data)
       this.MAX_COUNT = data.count
-      this.addContent(data.list)
+      this.addContent(data.list, this.firstAttachedItem_)
+    })
+    .catch(err => {
+      console.log(err)
     })
   },
 
@@ -570,19 +591,27 @@ InfiniteScroller.prototype = {
    * @param {Array<Object>} items The array of items to be added to the infinite
    *     scroller list.
    */
-  addContent (items) {
+  addContent (items, start) {
     if (!items.length) return
-    this.requestInProgress_ = false
 
-    let index
-    for (var i = 0; i < items.length; i++) {
-      if (this.items_.length <= this.loadedItems_) {
-        this.addItem_()
-      }
-      if (this.loadedItems_ <= this.MAX_COUNT) {
-        index = this.loadedItems_++
-        this.items_[index].data = items[i]
-      }
+    // let index
+    // for (var i = 0; i < items.length; i++) {
+    //   if (this.items_.length <= this.loadedItems_) {
+    //     this.addItem_()
+    //   }
+    //   if (this.loadedItems_ <= this.MAX_COUNT) {
+    //     index = this.loadedItems_++
+    //     this.items_[index].data = items[i]
+    //   }
+    // }
+
+    while (this.items_.length < Math.min(this.MAX_COUNT, items.length + start)) {
+      console.log('fill item add', this.items_.length)
+      this.addItem_()
+    }
+
+    for (let i = 0; i < items.length; i++) {
+      if (this.items_[start + i]) this.items_[start + i].data = items[i]
     }
 
     this.attachContent()

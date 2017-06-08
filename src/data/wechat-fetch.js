@@ -7,11 +7,11 @@ function pickRandom (a) {
   return a[Math.floor(Math.random() * a.length)]
 }
 
-export function getItem () {
+export function getItem (index) {
   return new Promise(resolve => {
     var item = {
       show: true,
-      id: ++msgIndex,
+      id: index,
       avatar: 'static/images/avatar' + Math.floor(Math.random() * NUM_AVATARS) + '.jpg',
       self: Math.random() < 0.1,
       image: Math.random() < 1.0 / 20 ? 'static/images/image' + Math.floor(Math.random() * NUM_IMAGES) + '.jpg' : '',
@@ -33,13 +33,16 @@ export function getItem () {
   })
 }
 
-export function fetch (count, items) {
-  count = Math.max(30, count)
+const MAX = 1000
+
+export function fetch (limit, skip) {
+  limit = Math.max(30, limit)
+  limit + skip > MAX ? limit -= (skip + limit) - MAX : limit
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       var items = []
-      for (var i = 0; i < Math.abs(count); i++) {
-        items[i] = getItem()
+      for (var i = 0; i < limit; i++) {
+        items[i] = getItem(skip + i)
       }
       resolve(Promise.all(items))
     }, 500)

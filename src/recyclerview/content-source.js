@@ -79,6 +79,7 @@ export default class ContentSource {
       },
       free (id) {
         let item = find(this.queue, i => i.id === id)
+        if (!item) return
         item.inuse = false
       },
       destroy (id, all) {
@@ -101,6 +102,7 @@ export default class ContentSource {
   }
 
   free (data) {
+    if (!data) return
     this.reuseVM.free(data.id)
   }
 

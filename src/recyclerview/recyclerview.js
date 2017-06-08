@@ -42,6 +42,8 @@ const options = {
   preventDefault: false,
   column: 1,
   waterflow: false,
+  waterflowPrerender: 1.5,
+  waterflowRemain: 0.5,
   cacheVM: 0,
   reuseVM: false,
   props: {}

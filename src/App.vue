@@ -170,6 +170,7 @@ export default {
     return {
       input: '',
       wechatOptions: {
+        reuseVM: true,
         props: {
           color: {
             value: ''
