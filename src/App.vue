@@ -48,6 +48,7 @@ html .wechat-list,
   margin-top: 14px;
 }
 .recyclerview-container {
+  height: 600px;
   height: calc(100vh - 50px);
 }
 .testlist {
@@ -121,7 +122,8 @@ html .wechat-list,
       key="mi"
       :list="list"
       :fetch="MiFetch" 
-      :item="MiItem" 
+      :item="MiItem"
+      :options="miOptions"
       :tombstone="MiTomstone"
     ></RecyclerView>
 
@@ -171,11 +173,15 @@ export default {
       input: '',
       wechatOptions: {
         reuseVM: true,
+        usePrefix: true,
         props: {
           color: {
             value: ''
           }
         }
+      },
+      miOptions: {
+        usePrefix: true
       },
       waterflowOptions: {
         waterflow: true,

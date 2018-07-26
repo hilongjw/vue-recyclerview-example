@@ -72,6 +72,7 @@
     "sinon": "^1.17.7",
     "sinon-chai": "^2.8.0",
     "url-loader": "^0.5.7",
+    "vue-lazyload": "^1.2.6",
     "vue-loader": "^11.1.4",
     "vue-recyclerview": "0.0.2",
     "vue-style-loader": "^2.0.0",

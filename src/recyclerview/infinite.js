@@ -17,7 +17,7 @@
  * Author surma https://github.com/surma
  * Modified by Awe @hilongjw
  */
-import { inView } from './util'
+import { inView, setStyle } from './util'
 
 const MAX_COUNT = Infinity
 
@@ -186,6 +186,10 @@ InfiniteScroller.prototype = {
     }
   },
 
+  setStyle (el, key, val) {
+    setStyle(el, key, val, this.options.usePrefix)
+  },
+
   /**
    * Sets the range of items which should be attached and attaches those items.
    * @param {number} start The first item which should be attached.
@@ -206,8 +210,8 @@ InfiniteScroller.prototype = {
     if (tombstone) {
       tombstone.classList.remove(this.INVISIBLE_CLASS)
       tombstone.style.opacity = 1
-      tombstone.style.transform = ''
-      tombstone.style.transition = ''
+      this.setStyle(tombstone, 'transform', '')
+      this.setStyle(tombstone, 'transition', '')
       return tombstone
     }
     return this.source_.createTombstone(this.baseNode.cloneNode(true))
@@ -217,7 +221,7 @@ InfiniteScroller.prototype = {
     const top = this.posList.get(Math.floor(i / this.column), i % this.column)
     if (!top) return true
     const index = top - this.anchorScrollTop
-    return (index > -window.innerHeight * this.options.waterflowRemain && index < window.innerHeight * this.options.waterflowPrerender)
+    return (index > -window.innerHeight * .5 && index < window.innerHeight)
   },
 
   getUnUsedNodes (clearAll) {
@@ -253,7 +257,7 @@ InfiniteScroller.prototype = {
 
   clearItem (item) {
     if (this.options.reuseVM) {
-      item.node.parentNode && this.scroller_.removeChild(item.node)
+      this.scroller_.removeChild(item.node)
       this.source_.free(item.data)
     } else {
       if (this.cacheVM && item.node) {
@@ -340,11 +344,11 @@ InfiniteScroller.prototype = {
     for (i in tombstoneAnimations) {
       anim = tombstoneAnimations[i]
       x = (i % this.column) * this.items_[i].width
-      this.items_[i].node.style.transform = 'translate3d(' + x + 'px,' + (this.anchorScrollTop + anim[1]) * this.column + 'px, 0) scale(' + (this.tombstoneWidth_ / this.items_[i].width) + ', ' + (this.tombstoneSize_ / this.items_[i].height) + ')'
+      this.setStyle(this.items_[i].node, 'transform', 'translate3d(' + x + 'px,' + (this.anchorScrollTop + anim[1]) * this.column + 'px, 0) scale(' + (this.tombstoneWidth_ / this.items_[i].width) + ', ' + (this.tombstoneSize_ / this.items_[i].height) + ')')
       // Call offsetTop on the nodes to be animated to force them to apply current transforms.
       this.items_[i].node.offsetTop
       anim[0].offsetTop
-      this.items_[i].node.style.transition = 'transform ' + this.ANIMATION_DURATION_MS + 'ms'
+      this.setStyle(this.items_[i].node, 'transition', 'transform ' + this.ANIMATION_DURATION_MS + 'ms')
     }
   },
 
@@ -366,13 +370,13 @@ InfiniteScroller.prototype = {
       x = (i % this.column) * (this.items_[i].width || this.tombstoneWidth_)
       y = this.waterflow ? this.posList.get(row, i % this.column) : this.curPos
       if (anim) {
-        anim[0].style.transition = 'transform ' + this.ANIMATION_DURATION_MS + 'ms, opacity ' + this.ANIMATION_DURATION_MS + 'ms'
-        anim[0].style.transform = 'translate3d(' + x + 'px,' + y + 'px, 0) scale(' + (this.items_[i].width / this.tombstoneWidth_) + ', ' + (this.items_[i].height / this.tombstoneSize_) + ')'
+        this.setStyle(anim[0], 'transition', 'transform ' + this.ANIMATION_DURATION_MS + 'ms, opacity ' + this.ANIMATION_DURATION_MS + 'ms')
+        this.setStyle(anim[0], 'transform', 'translate3d(' + x + 'px,' + y + 'px, 0) scale(' + (this.items_[i].width / this.tombstoneWidth_) + ', ' + (this.items_[i].height / this.tombstoneSize_) + ')')
         anim[0].style.opacity = 0
       }
       if (this.items_[i].node && this.curPos !== this.items_[i].top) {
-        if (!anim) this.items_[i].node.style.transition = ''
-        this.items_[i].node.style.transform = 'translate3d('+ x + 'px,' + y + 'px, 0)'
+        if (!anim) this.setStyle(this.items_[i].node, 'transition', '')
+        this.setStyle(this.items_[i].node, 'transform', 'translate3d('+ x + 'px,' + y + 'px, 0)')
       }
       this.items_[i].top = y
       
@@ -519,7 +523,7 @@ InfiniteScroller.prototype = {
 
   setScrollRunway () {
     this.scrollRunwayEnd_ = Math.max(this.scrollRunwayEnd_, this.curPos + this.SCROLL_RUNWAY)
-    this.scrollRunway_.style.transform = 'translate(0, ' + this.scrollRunwayEnd_ + 'px)'
+    this.setStyle(this.scrollRunway_, 'transform', 'translate(0, ' + this.scrollRunwayEnd_ + 'px)')
     this.scroller_.scrollTop = this.anchorScrollTop
   },
 
@@ -539,35 +543,14 @@ InfiniteScroller.prototype = {
   maybeRequestContent () {
     // Don't issue another request if one is already in progress as we don't
     // know where to start the next request yet.
-    console.log('maybeRequestContent', this.lastAttachedItem_, this.firstAttachedItem_, this.requestInProgress_)
-
-    // if (this.requestInProgress_) return
-    this.lastAttachedItem_ = Math.min(this.lastAttachedItem_, this.MAX_COUNT)
-    
-    const itemsNeeded = this.lastAttachedItem_ - this.firstAttachedItem_
-
-    console.log('maybeRequestContent', this.lastAttachedItem_, this.firstAttachedItem_, itemsNeeded)
+    if (this.requestInProgress_) return
+    var itemsNeeded = this.lastAttachedItem_ - this.loadedItems_;
     if (itemsNeeded <= 0) return
     this.requestInProgress_ = true
-
-    if (!this.loadedFlag) this.loadedFlag = {}
-    console.log(this.firstAttachedItem_ + '-' + itemsNeeded)
-    if (this.loadedFlag[this.firstAttachedItem_ + '-' + itemsNeeded]) return console.log('loaded')
-    this.loadedFlag[this.firstAttachedItem_ + '-' + itemsNeeded] = true
-
     if (!this.source_.fetch) return
-
-    console.log('itemsNeeded, this.firstAttachedItem_', itemsNeeded, this.firstAttachedItem_)
-    this.source_.fetch(itemsNeeded, this.firstAttachedItem_)
-    .then(data => {
-      this.requestInProgress_ = false
-      console.log('this.requestInProgress_', this.requestInProgress_)
-      console.log('got data', data)
+    this.source_.fetch(itemsNeeded, this.loadedItems_).then(data => {
       this.MAX_COUNT = data.count
-      this.addContent(data.list, this.firstAttachedItem_)
-    })
-    .catch(err => {
-      console.log(err)
+      this.addContent(data.list)
     })
   },
 
@@ -591,27 +574,19 @@ InfiniteScroller.prototype = {
    * @param {Array<Object>} items The array of items to be added to the infinite
    *     scroller list.
    */
-  addContent (items, start) {
+  addContent (items) {
     if (!items.length) return
+    this.requestInProgress_ = false
 
-    // let index
-    // for (var i = 0; i < items.length; i++) {
-    //   if (this.items_.length <= this.loadedItems_) {
-    //     this.addItem_()
-    //   }
-    //   if (this.loadedItems_ <= this.MAX_COUNT) {
-    //     index = this.loadedItems_++
-    //     this.items_[index].data = items[i]
-    //   }
-    // }
-
-    while (this.items_.length < Math.min(this.MAX_COUNT, items.length + start)) {
-      console.log('fill item add', this.items_.length)
-      this.addItem_()
-    }
-
-    for (let i = 0; i < items.length; i++) {
-      if (this.items_[start + i]) this.items_[start + i].data = items[i]
+    let index
+    for (var i = 0; i < items.length; i++) {
+      if (this.items_.length <= this.loadedItems_) {
+        this.addItem_()
+      }
+      if (this.loadedItems_ <= this.MAX_COUNT) {
+        index = this.loadedItems_++
+        this.items_[index].data = items[i]
+      }
     }
 
     this.attachContent()
